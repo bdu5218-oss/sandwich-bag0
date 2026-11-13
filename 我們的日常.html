@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我們的日常</title>
+<style>
+:root{--bg:#fff5f6;--card:#fff;--text:#3a2a2e;--sub:#8a7479;--accent:#e85d75;--line:#f3d9de;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1517;--card:#2a1e21;--text:#f5e8ea;--sub:#b39ca1;--accent:#ff8099;--line:#433034;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d1517;--card:#2a1e21;--text:#f5e8ea;--sub:#b39ca1;--accent:#ff8099;--line:#43303a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;line-height:1.5}
+main{max-width:520px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.hero{text-align:center}
+.names{color:var(--sub);font-size:14px}
+.big{font-size:56px;font-weight:700;color:var(--accent);line-height:1.1;margin:6px 0}
+.big small{font-size:18px;font-weight:500;color:var(--sub)}
+.ymd{color:var(--sub);font-size:14px}
+h2{font-size:16px;margin:0 0 10px}
+input,textarea,button{font:inherit;color:var(--text)}
+input,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+textarea{min-height:80px;resize:vertical}
+button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer}
+button.ghost{background:transparent;color:var(--sub);padding:4px 8px;font-size:13px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.ms{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:15px}
+.ms:last-child{border:0}.ms .d{color:var(--sub);font-size:13px}.ms.next{color:var(--accent);font-weight:600}
+.moods{display:flex;gap:6px;margin-bottom:8px}
+.moods button{background:var(--bg);border:1px solid var(--line);font-size:22px;padding:6px 0;flex:1}
+.moods button.on{border-color:var(--accent);background:var(--line)}
+.entry{border-top:1px solid var(--line);padding:12px 0}
+.entry:first-of-type{border:0}
+.meta{color:var(--sub);font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.txt{white-space:pre-wrap;word-break:break-word;margin-top:4px}
+.empty{color:var(--sub);text-align:center;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<section class="card hero" id="hero"></section>
+<section class="card" id="ms"></section>
+<section class="card">
+<h2>今天發生了什麼？</h2>
+<div class="moods" id="moods"></div>
+<input type="date" id="edate">
+<textarea id="etxt" placeholder="寫下今天和 TA 的小事…"></textarea>
+<button id="add">儲存紀錄</button>
+</section>
+<section class="card"><h2>日記</h2><div id="list"></div></section>
+<section class="card"><button class="ghost" id="reset">修改設定</button></section>
+</main>
+<script>
+const MOODS=["😍","😊","😌","😢","😤"];
+let S={a:"",b:"",start:""},E=[],mood=MOODS[1];
+const $=id=>document.getElementById(id);
+function load(){try{S=JSON.parse(localStorage.getItem("cd_s"))||S;E=JSON.parse(localStorage.getItem("cd_e"))||[]}catch(e){}}
+function save(){try{localStorage.setItem("cd_s",JSON.stringify(S));localStorage.setItem("cd_e",JSON.stringify(E))}catch(e){}}
+const day0=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const today=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate())};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function setup(){
+ $("hero").innerHTML='<h2>開始吧 💕</h2><input id="na" placeholder="你的暱稱"><input id="nb" placeholder="TA 的暱稱"><div class="names" style="text-align:left;margin-bottom:4px">交往紀念日</div><input type="date" id="sd"><button id="go">開始記錄</button>';
+ $("ms").hidden=true;
+ $("go").onclick=()=>{if(!$("sd").value)return;S={a:$("na").value.trim(),b:$("nb").value.trim(),start:$("sd").value};save();render()};
+}
+function render(){
+ if(!S.start){setup();return}
+ $("ms").hidden=false;
+ const st=day0(S.start),t=today(),n=Math.round((t-st)/864e5)+1;
+ let y=t.getFullYear()-st.getFullYear(),m=t.getMonth()-st.getMonth(),d=t.getDate()-st.getDate();
+ if(d<0){m--;d+=new Date(t.getFullYear(),t.getMonth(),0).getDate()}
+ if(m<0){y--;m+=12}
+ const nm=(S.a||S.b)?esc(S.a||"我")+" ❤ "+esc(S.b||"TA"):"我們";
+ $("hero").innerHTML='<div class="names">'+nm+'</div><div class="big">'+(n>0?n:0)+' <small>天</small></div><div class="ymd">'+(y?y+" 年 ":"")+m+" 個月 "+d+" 天・自 "+S.start+" 起</div>";
+ const list=[100,200,300,365,500,730,1000,1095,1500,2000,3000].map(k=>({k,dt:new Date(st.getFullYear(),st.getMonth(),st.getDate()+k-1)}));
+ for(let i=1;i<=10;i++)list.push({k:i+" 週年",dt:new Date(st.getFullYear()+i,st.getMonth(),st.getDate()),ann:1});
+ const up=list.filter(x=>x.dt>=t).sort((a,b)=>a.dt-b.dt).slice(0,4);
+ $("ms").innerHTML='<h2>接下來的紀念日</h2>'+up.map((x,i)=>{const left=Math.round((x.dt-t)/864e5);return '<div class="ms'+(i?"":" next")+'"><span>'+(x.ann?x.k:"第 "+x.k+" 天")+'<span class="d"> '+iso(x.dt)+'</span></span><span>'+(left?"還有 "+left+" 天":"就是今天 🎉")+'</span></div>'}).join("");
+ const L=$("list");
+ if(!E.length){L.innerHTML='<div class="empty">還沒有紀錄，寫下第一篇吧</div>'}
+ else L.innerHTML=[...E].sort((a,b)=>b.d.localeCompare(a.d)||b.id-a.id).map(e=>'<div class="entry"><div class="meta"><span>'+e.m+" "+e.d+'</span><button class="ghost" data-id="'+e.id+'">刪除</button></div><div class="txt">'+esc(e.t)+'</div></div>').join("");
+ L.querySelectorAll("button").forEach(b=>b.onclick=()=>{if(confirm("確定刪除這則紀錄？")){E=E.filter(e=>e.id!=b.dataset.id);save();render()}});
+}
+$("moods").innerHTML=MOODS.map(m=>'<button data-m="'+m+'">'+m+'</button>').join("");
+function markMood(){document.querySelectorAll("#moods button").forEach(b=>b.classList.toggle("on",b.dataset.m===mood))}
+document.querySelectorAll("#moods button").forEach(b=>b.onclick=()=>{mood=b.dataset.m;markMood()});
+$("edate").value=iso(today());markMood();
+$("add").onclick=()=>{const t=$("etxt").value.trim();if(!t)return;E.push({id:Date.now(),d:$("edate").value||iso(today()),m:mood,t});save();$("etxt").value="";render()};
+$("reset").onclick=()=>{if(confirm("要重新設定暱稱與紀念日嗎？日記不會被刪除。")){S.start="";save();render()}};
+load();render();
+</script>
+</body>
+</html>
