@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我們的小空間</title>
+<style>
+:root{--bg:#fff5f6;--card:#fff;--text:#3a2a2e;--sub:#8a7479;--accent:#e85d75;--line:#f3d9de;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1d1517;--card:#2a1e21;--text:#f5e8ea;--sub:#b39ca1;--accent:#ff8099;--line:#433034;color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;line-height:1.5;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+main{max-width:520px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.hero{text-align:center}.sub{color:var(--sub);font-size:14px}
+.big{font-size:52px;font-weight:700;color:var(--accent);line-height:1.1}.big small{font-size:18px;color:var(--sub);font-weight:500}
+h2{font-size:16px;margin:0 0 10px}
+input,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+textarea{min-height:76px;resize:vertical}
+button{font:inherit;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+button.g{background:transparent;color:var(--sub);padding:4px 8px;font-size:13px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1;background:var(--card);color:var(--text);border:1px solid var(--line);padding:8px 0}
+.tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:8px 0}
+.grid button,.tray button{background:var(--bg);border:1px solid var(--line);font-size:24px;padding:0;aspect-ratio:1;color:var(--text)}
+.tray{display:flex;gap:4px;flex-wrap:wrap}.tray button{width:42px;aspect-ratio:auto;height:42px}.tray .on{border-color:var(--accent);background:var(--line)}
+.pet{display:flex;align-items:center;gap:12px}.pet .e{font-size:44px}.pet div{flex:1}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.it{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.it span{flex:1;word-break:break-word}.it.done span{text-decoration:line-through;color:var(--sub)}
+.en{border-top:1px solid var(--line);padding:10px 0}.meta{color:var(--sub);font-size:13px;display:flex;justify-content:space-between}
+.txt{white-space:pre-wrap;word-break:break-word}
+.ms{display:flex;justify-content:space-between;padding:8px 0;border-top:1px dashed var(--line)}.ms.n{color:var(--accent);font-weight:600}
+.err{color:#d33;font-size:14px;margin-top:6px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px;overflow-x:auto}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const $=id=>document.getElementById(id),A=$("app");
+const g=k=>{try{return localStorage.getItem(k)}catch(e){return null}},st=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate())};
+const p0=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+let uid=g("cp_uid");if(!uid){uid=Math.random().toString(36).slice(2,10);st("cp_uid",uid)}
+let cfg,code,me,db,doc={},todos=[],diary=[],tab="room",tool="🛋️",mood="😊";
+const FURN=["🛋️","🛏️","🪴","🖼️","📺","🧸","🕯️","🍰","🌷","📚","🎁","🪑","🧺","🐾","❌"],MOODS=["😍","😊","😌","😢","😤"];
+
+function boot(){
+ const h=location.hash.slice(1);
+ if(h.startsWith("i=")){try{const o=JSON.parse(atob(decodeURIComponent(h.slice(2))));st("cp_cfg",JSON.stringify(o.c));st("cp_code",o.k)}catch(e){}history.replaceState(null,"",location.pathname)}
+ try{cfg=JSON.parse(g("cp_cfg"))}catch(e){cfg=null}
+ code=g("cp_code");me=g("cp_me");
+ if(!cfg)return vCfg();
+ try{if(!firebase.apps.length)firebase.initializeApp(cfg);db=firebase.firestore()}catch(e){return vCfg("Firebase 設定有誤："+e.message)}
+ if(!me)return vName();
+ if(!code)return vCode();
+ main();
+}
+function vCfg(err){
+ A.innerHTML='<div class="card"><h2>💕 第一次設定</h2><p class="sub">到 Firebase 專案設定複製網頁應用程式的 firebaseConfig，整段貼在下面。</p><textarea id="cf" placeholder="const firebaseConfig = { apiKey: &quot;...&quot;, ... };"></textarea><button id="ok">儲存</button><div class="err">'+esc(err||"")+'</div></div>';
+ $("ok").onclick=()=>{const o={};[...$("cf").value.matchAll(/(\w+)\s*:\s*["']([^"']+)["']/g)].forEach(m=>o[m[1]]=m[2]);
+  if(!o.apiKey||!o.projectId||!o.appId)return vCfg("找不到 apiKey、projectId、appId，請確認貼上完整內容");
+  st("cp_cfg",JSON.stringify(o));boot()};
+}
+function vName(){
+ A.innerHTML='<div class="card"><h2>你的暱稱</h2><input id="nm" placeholder="例如：小明"><button id="ok">下一步</button></div>';
+ $("ok").onclick=()=>{const v=$("nm").value.trim();if(!v)return;st("cp_me",v);boot()};
+}
+function vCode(err){
+ A.innerHTML='<div class="card"><h2>建立我們的空間</h2><div class="sub">交往紀念日</div><input type="date" id="sd"><button id="mk">建立新空間</button></div><div class="card"><h2>加入伴侶的空間</h2><input id="cd" placeholder="貼上空間代碼（或直接用邀請連結開啟）"><button id="jn">加入</button><div class="err" id="er">'+esc(err||"")+'</div></div>';
+ $("mk").onclick=async()=>{const sd=$("sd").value;if(!sd)return;const c=Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");
+  try{await db.doc("couples/"+c).set({start:sd,room:{},pet:{name:"小布丁",fed:0,count:0},names:{}});st("cp_code",c);boot()}catch(e){$("er").textContent="建立失敗："+e.message}};
+ $("jn").onclick=async()=>{const c=$("cd").value.trim();if(!c)return;
+  try{const d=await db.doc("couples/"+c).get();if(!d.exists)return vCode("找不到這個空間代碼");st("cp_code",c);boot()}catch(e){$("er").textContent="加入失敗："+e.message}};
+}
+const ref=()=>db.doc("couples/"+code);
+function main(){
+ A.innerHTML='<div class="card hero" id="hero"></div><div class="tabs">'+[["room","🏠 房間"],["todo","✅ 清單"],["diary","📖 日記"],["ms","🎉 紀念日"]].map(t=>'<button data-t="'+t[0]+'">'+t[1]+'</button>').join("")+'</div><div id="pn"></div><div class="card"><button id="inv">邀請伴侶（複製連結）</button> <button class="g" id="out">離開空間</button></div>';
+ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+ $("inv").onclick=()=>{const l=location.origin+location.pathname+"#i="+encodeURIComponent(btoa(JSON.stringify({c:cfg,k:code})));
+  (navigator.clipboard?navigator.clipboard.writeText(l).then(()=>alert("已複製，傳給伴侶就能加入。連結等同密碼，請只傳給 TA。")):Promise.reject()).catch(()=>prompt("複製這個連結傳給伴侶：",l))};
+ $("out").onclick=()=>{if(confirm("離開後需要重新輸入代碼或使用邀請連結。確定？")){st("cp_code","");location.reload()}};
+ ref().set({names:{[uid]:me}},{merge:true}).catch(()=>{});
+ ref().onSnapshot(s=>{doc=s.data()||{};render()},e=>{$("pn").innerHTML='<div class="err">連線失敗：'+esc(e.message)+'</div>'});
+ ref().collection("todos").orderBy("ts").onSnapshot(s=>{todos=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+ ref().collection("diary").orderBy("ts","desc").onSnapshot(s=>{diary=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+}
+function render(){
+ if(!$("pn")||!doc.start)return;
+ const st0=p0(doc.start),t=today(),n=Math.round((t-st0)/864e5)+1;
+ const nm=Object.values(doc.names||{}).map(esc).join(" ❤ ");
+ $("hero").innerHTML='<div class="sub">'+(nm||"我們")+'</div><div class="big">'+Math.max(n,0)+' <small>天</small></div><div class="sub">自 '+esc(doc.start)+' 起</div>';
+ document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
+ ({room:pRoom,todo:pTodo,diary:pDiary,ms:pMs})[tab](st0,t);
+}
+function pRoom(){
+ const r=doc.room||{},p=doc.pet||{name:"小布丁",fed:0,count:0},h=(Date.now()-p.fed)/36e5;
+ const pm=!p.fed?["🐣","剛出生，快餵我"]:h<8?["😺","吃飽飽，很開心"]:h<24?["🐱","有點餓了"]:["🙀","好餓…快餵我"];
+ let gr="";for(let i=0;i<30;i++)gr+='<button data-i="'+i+'">'+(r[i]||"")+'</button>';
+ $("pn").innerHTML='<div class="card pet"><span class="e">'+pm[0]+'</span><div><b id="pn2">'+esc(p.name)+'</b> <button class="g" id="rn">改名</button><div class="sub">'+pm[1]+'・已餵 '+(p.count||0)+' 次</div></div><button id="fd">🍖 餵食</button></div><div class="card"><h2>我們的小房間</h2><div class="sub">選一個家具，點格子擺放，雙方會即時同步</div><div class="tray">'+FURN.map(f=>'<button class="'+(f===tool?"on":"")+'" data-f="'+f+'">'+f+'</button>').join("")+'</div><div class="grid">'+gr+'</div></div>';
+ $("fd").onclick=()=>ref().set({pet:{fed:Date.now(),count:(p.count||0)+1}},{merge:true});
+ $("rn").onclick=()=>{const v=prompt("寵物的名字",p.name);if(v&&v.trim())ref().set({pet:{name:v.trim()}},{merge:true})};
+ document.querySelectorAll(".tray button").forEach(b=>b.onclick=()=>{tool=b.dataset.f;render()});
+ document.querySelectorAll(".grid button").forEach(b=>b.onclick=()=>{const i=b.dataset.i;ref().set({room:{[i]:tool==="❌"?firebase.firestore.FieldValue.delete():tool}},{merge:true})});
+}
+function pTodo(){
+ $("pn").innerHTML='<div class="card"><h2>我們的愛情清單</h2><div class="row"><input id="ti" placeholder="想一起做的事…" style="margin:0"><button id="ta" style="flex:0 0 auto">新增</button></div>'+(todos.length?todos.map(x=>'<div class="it'+(x.done?" done":"")+'"><input type="checkbox" style="width:auto;margin:0" data-d="'+x.id+'"'+(x.done?" checked":"")+'><span>'+esc(x.t)+'</span><button class="g" data-x="'+x.id+'">刪除</button></div>').join(""):'<p class="sub">還沒有項目，加一個吧</p>')+'</div>';
+ const add=()=>{const v=$("ti").value.trim();if(v)ref().collection("todos").add({t:v,done:false,by:me,ts:Date.now()})};
+ $("ta").onclick=add;$("ti").onkeydown=e=>{if(e.key==="Enter")add()};
+ document.querySelectorAll("[data-d]").forEach(c=>c.onchange=()=>ref().collection("todos").doc(c.dataset.d).update({done:c.checked}));
+ document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>ref().collection("todos").doc(b.dataset.x).delete());
+}
+function pDiary(){
+ const keep=$("dt")?$("dt").value:"";
+ $("pn").innerHTML='<div class="card"><h2>今天發生了什麼？</h2><div class="row" id="md" style="margin-bottom:8px">'+MOODS.map(m=>'<button data-m="'+m+'" style="background:'+(m===mood?"var(--line)":"var(--bg)")+';font-size:22px">'+m+'</button>').join("")+'</div><input type="date" id="dd" value="'+iso(today())+'"><textarea id="dt" placeholder="寫下今天的小事…"></textarea><button id="da">儲存</button></div><div class="card"><h2>日記</h2>'+(diary.length?diary.map(x=>'<div class="en"><div class="meta"><span>'+x.m+" "+esc(x.d)+"・"+esc(x.by)+'</span>'+(x.by===me?'<button class="g" data-x="'+x.id+'">刪除</button>':"")+'</div><div class="txt">'+esc(x.t)+'</div></div>').join(""):'<p class="sub">還沒有日記</p>')+'</div>';
+ $("dt").value=keep;
+ document.querySelectorAll("#md button").forEach(b=>b.onclick=()=>{mood=b.dataset.m;const v=$("dt").value;pDiary();$("dt").value=v});
+ $("da").onclick=()=>{const v=$("dt").value.trim();if(!v)return;ref().collection("diary").add({d:$("dd").value||iso(today()),m:mood,t:v,by:me,ts:Date.now()});$("dt").value=""};
+ document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{if(confirm("確定刪除？"))ref().collection("diary").doc(b.dataset.x).delete()});
+}
+function pMs(s,t){
+ const L=[100,200,300,365,500,730,1000,1095,1500,2000,3000].map(k=>({k:"第 "+k+" 天",d:new Date(s.getFullYear(),s.getMonth(),s.getDate()+k-1)}));
+ for(let i=1;i<=10;i++)L.push({k:i+" 週年",d:new Date(s.getFullYear()+i,s.getMonth(),s.getDate())});
+ const u=L.filter(x=>x.d>=t).sort((a,b)=>a.d-b.d).slice(0,6);
+ $("pn").innerHTML='<div class="card"><h2>接下來的紀念日</h2>'+u.map((x,i)=>{const l=Math.round((x.d-t)/864e5);return'<div class="ms'+(i?"":" n")+'"><span>'+x.k+' <span class="sub">'+iso(x.d)+'</span></span><span>'+(l?"還有 "+l+" 天":"就是今天 🎉")+'</span></div>'}).join("")+'</div>';
+}
+boot();
+</script>
+</body>
+</html>
